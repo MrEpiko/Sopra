@@ -20,9 +20,32 @@ import java.util.stream.Collectors;
 
 public class SopraImpl implements SopraApi {
 
-    private final Logger logger = LoggerFactory.getLogger(SopraImpl.class);
+    private final Logger LOGGER = LoggerFactory.getLogger(SopraImpl.class);
     private final Map<String, HikariDataSource> dataSources;
     private final Reflections reflections = new Reflections(SopraApi.class.getPackageName());
+
+    private final Map<Class<?>, String> SQL_TYPES = Map.ofEntries(
+            Map.entry(int.class, "INT"),
+            Map.entry(Integer.class, "INT"),
+            Map.entry(long.class, "BIGINT"),
+            Map.entry(Long.class, "BIGINT"),
+            Map.entry(short.class, "SMALLINT"),
+            Map.entry(Short.class, "SMALLINT"),
+            Map.entry(byte.class, "TINYINT"),
+            Map.entry(Byte.class, "TINYINT"),
+            Map.entry(double.class, "DOUBLE"),
+            Map.entry(Double.class, "DOUBLE"),
+            Map.entry(float.class, "FLOAT"),
+            Map.entry(Float.class, "FLOAT"),
+            Map.entry(boolean.class, "BOOLEAN"),
+            Map.entry(Boolean.class, "BOOLEAN"),
+            Map.entry(Timestamp.class, "TIMESTAMP"),
+            Map.entry(LocalDateTime.class, "DATETIME"),
+            Map.entry(LocalDate.class, "DATE"),
+            Map.entry(LocalTime.class, "TIME"),
+            Map.entry(UUID.class, "CHAR(36)"),
+            Map.entry(byte[].class, "BLOB")
+    );
 
     protected SopraImpl(@NotNull Map<String, HikariDataSource> dataSources) {
         this.dataSources = new HashMap<>(dataSources);
@@ -77,7 +100,7 @@ public class SopraImpl implements SopraApi {
             String classNames = unhandledClasses.stream()
                     .map(Class::getName)
                     .collect(Collectors.joining(", "));
-            logger.warn("The following classes were not handled by any data source: {}", classNames);
+            LOGGER.warn("The following classes were not handled by any data source: {}", classNames);
         }
     }
 
@@ -174,47 +197,11 @@ public class SopraImpl implements SopraApi {
     }
 
     private String getSqlType(@NotNull Class<?> type, @Nullable Column column) {
-        if (type == int.class || type == Integer.class) {
-            return "INT";
-        }
-        if (type == long.class || type == Long.class) {
-            return "BIGINT";
-        }
-        if (type == short.class || type == Short.class) {
-            return "SMALLINT";
-        }
-        if (type == byte.class || type == Byte.class) {
-            return "TINYINT";
-        }
-        if (type == double.class || type == Double.class) {
-            return "DOUBLE";
-        }
-        if (type == float.class || type == Float.class) {
-            return "FLOAT";
-        }
-        if (type == boolean.class || type == Boolean.class) {
-            return "BOOLEAN";
-        }
-        if (type == Timestamp.class) {
-            return "TIMESTAMP";
-        }
-        if (type == LocalDateTime.class) {
-            return "DATETIME";
-        }
-        if (type == LocalDate.class) {
-            return "DATE";
-        }
-        if (type == LocalTime.class) {
-            return "TIME";
-        }
-        if (type == UUID.class) {
-            return "CHAR(36)";
+        if (SQL_TYPES.containsKey(type)) {
+            return SQL_TYPES.get(type);
         }
         if (type.isEnum()) {
             return "VARCHAR(50)";
-        }
-        if (type == byte[].class) {
-            return "BLOB";
         }
         if (type == String.class) {
             return "VARCHAR(" + (column != null ? column.length() : 255) + ")";

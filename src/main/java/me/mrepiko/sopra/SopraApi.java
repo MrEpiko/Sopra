@@ -30,7 +30,7 @@ public interface SopraApi {
     @Setter
     class Builder {
 
-        private final Logger logger = LoggerFactory.getLogger(Builder.class);
+        private final Logger LOGGER = LoggerFactory.getLogger(Builder.class);
 
         private Map<String, Config> config = new HashMap<>();
         private Map<String, Object> defaultProperties;
@@ -133,7 +133,7 @@ public interface SopraApi {
                 Config config = entry.getValue();
                 config.setDefaultProperties(defaultProperties);
                 dataSources.put(id, new HikariDataSource(config.getHikariConfig()));
-                logger.info("Connection established for data source with ID: {}", id);
+                LOGGER.info("Connection established for data source with ID: {}", id);
             }
             return new SopraImpl(dataSources);
         }
