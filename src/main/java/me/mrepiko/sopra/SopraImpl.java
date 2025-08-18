@@ -22,7 +22,7 @@ public class SopraImpl implements SopraApi {
 
     private final Logger LOGGER = LoggerFactory.getLogger(SopraImpl.class);
     private final Map<String, HikariDataSource> dataSources;
-    private final Reflections reflections = new Reflections(SopraApi.class.getPackageName());
+    private final Reflections reflections;
 
     private final Map<Class<?>, String> SQL_TYPES = Map.ofEntries(
             Map.entry(int.class, "INT"),
@@ -47,8 +47,9 @@ public class SopraImpl implements SopraApi {
             Map.entry(byte[].class, "BLOB")
     );
 
-    protected SopraImpl(@NotNull Map<String, HikariDataSource> dataSources) {
+    protected SopraImpl(@NotNull Map<String, HikariDataSource> dataSources, @NotNull Class<?> baseClass) {
         this.dataSources = new HashMap<>(dataSources);
+        this.reflections = new Reflections(baseClass.getPackageName());
         setupTables();
     }
 
@@ -176,7 +177,7 @@ public class SopraImpl implements SopraApi {
         String columnName;
         if (column != null) {
             if (column.name().isEmpty()) {
-                columnName = field.getName();
+                columnName = !snakeCase ? field.getName() : field.getName().replaceAll("([a-z])([A-Z])", "$1_$2").toLowerCase();
             } else {
                 columnName = column.name();
             }

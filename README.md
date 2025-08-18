@@ -31,7 +31,7 @@ Map<String, Object> defaultProperties = Map.of(
         "characterEncoding", "utf8"
 );
 
-SopraApi sopra = SopraApi.Builder.create()
+SopraApi sopra = SopraApi.Builder.create(SopraApi.class)
         .setCredentials(node)
         .setDataSourceClassName("com.mysql.cj.jdbc.MysqlDataSource")
         .setDefaultProperties(defaultProperties)

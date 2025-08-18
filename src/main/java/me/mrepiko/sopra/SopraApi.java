@@ -36,8 +36,13 @@ public interface SopraApi {
         private final Logger LOGGER = LoggerFactory.getLogger(Builder.class);
         private final ObjectMapper MAPPER = new ObjectMapper();
 
+        private Class<?> baseClass;
         private Map<String, Config> config = new HashMap<>();
         private Map<String, Object> defaultProperties;
+
+        private Builder(@NotNull Class<?> baseClass) {
+            this.baseClass = baseClass;
+        }
 
         @NotNull
         public Builder setDefaultProperties(@NotNull Map<String, Object> defaultProperties) {
@@ -143,8 +148,8 @@ public interface SopraApi {
         }
 
         @NotNull
-        public static Builder create() {
-            return new Builder();
+        public static Builder create(@NotNull Class<?> baseClass) {
+            return new Builder(baseClass);
         }
 
         @NotNull
@@ -157,7 +162,7 @@ public interface SopraApi {
                 dataSources.put(id, new HikariDataSource(config.getHikariConfig()));
                 LOGGER.info("Connection established for data source with ID: {}", id);
             }
-            return new SopraImpl(dataSources);
+            return new SopraImpl(dataSources, baseClass);
         }
 
         @AllArgsConstructor
