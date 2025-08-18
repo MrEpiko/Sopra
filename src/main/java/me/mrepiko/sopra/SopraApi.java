@@ -1,6 +1,7 @@
 package me.mrepiko.sopra;
 
 import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.zaxxer.hikari.HikariConfig;
@@ -14,9 +15,11 @@ import org.jetbrains.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import javax.swing.*;
 import java.sql.Connection;
 import java.sql.SQLException;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 public interface SopraApi {
@@ -31,6 +34,7 @@ public interface SopraApi {
     class Builder {
 
         private final Logger LOGGER = LoggerFactory.getLogger(Builder.class);
+        private final ObjectMapper MAPPER = new ObjectMapper();
 
         private Map<String, Config> config = new HashMap<>();
         private Map<String, Object> defaultProperties;
@@ -38,6 +42,24 @@ public interface SopraApi {
         @NotNull
         public Builder setDefaultProperties(@NotNull Map<String, Object> defaultProperties) {
             this.defaultProperties = new HashMap<>(defaultProperties);
+            return this;
+        }
+
+        @NotNull
+        public Builder setCredentials(@NotNull List<DatabaseCredentials> credentials) {
+            for (DatabaseCredentials credential : credentials) {
+                setCredentials(credential);
+            }
+            return this;
+        }
+
+        @NotNull
+        public Builder setCredentials(@NotNull DatabaseCredentials credentials) {
+            if (credentials.getId() == null || credentials.getId().isEmpty()) {
+                throw new IllegalArgumentException("Credentials ID cannot be null or empty");
+            }
+            Config config = this.config.computeIfAbsent(credentials.getId(), x -> new Config());
+            config.syncHikariConfig(credentials);
             return this;
         }
 
@@ -58,7 +80,7 @@ public interface SopraApi {
             if (id == null) {
                 throw new IllegalArgumentException("Provided object node has no id provided");
             }
-            this.config.computeIfAbsent(id, x -> new Config()).setCredentials(node);
+            this.config.computeIfAbsent(id, x -> new Config()).syncHikariConfig(MAPPER.convertValue(node, DatabaseCredentials.class));
             return this;
         }
 
@@ -150,54 +172,64 @@ public interface SopraApi {
             private int port = 3306;
             private HikariConfig hikariConfig;
 
-            public void setCredentials(@NotNull ObjectNode node) {
-                this.serverName = (node.has("serverName")) ? node.get("serverName").asText() : null;
-                if (this.serverName == null) {
-                    if (node.has("server_name")) {
-                        this.serverName = node.get("server_name").asText();
-                    } else {
-                        throw new IllegalArgumentException("Provided object node has no serverName provided");
-                    }
-                }
+            public void syncHikariConfig(@NotNull DatabaseCredentials credentials) {
+                this.serverName = credentials.getHost();
+                this.databaseName = credentials.getDatabaseName();
+                this.user = credentials.getUser();
+                this.password = credentials.getPassword();
+                this.port = credentials.getPort();
 
-                this.databaseName = (node.has("databaseName")) ? node.get("databaseName").asText() : null;
-                if (this.databaseName == null) {
-                    if (node.has("database_name")) {
-                        this.databaseName = node.get("database_name").asText();
-                    } else {
-                        throw new IllegalArgumentException("Provided object node has no databaseName provided");
-                    }
-                }
-
-                this.user = (node.has("user")) ? node.get("user").asText() : null;
-                if (this.user == null) {
-                    if (node.has("user")) {
-                        this.user = node.get("user").asText();
-                    } else {
-                        throw new IllegalArgumentException("Provided object node has no user provided");
-                    }
-                }
-
-                this.password = (node.has("password")) ? node.get("password").asText() : null;
-                if (this.password == null) {
-                    if (node.has("password")) {
-                        this.password = node.get("password").asText();
-                    } else {
-                        throw new IllegalArgumentException("Provided object node has no password provided");
-                    }
-                }
-
-                this.port = (node.has("port")) ? node.get("port").asInt() : 0;
-                if (this.port == 0 && node.has("port")) {
-                    this.port = node.get("port").asInt();
-                } else {
-                    this.port = 3306;
-                }
-
-                setCredentials();
+                syncHikariConfig();
             }
 
-            private void setCredentials() {
+//            public void syncHikariConfig(@NotNull ObjectNode node) {
+//                this.serverName = (node.has("serverName")) ? node.get("serverName").asText() : null;
+//                if (this.serverName == null) {
+//                    if (node.has("server_name")) {
+//                        this.serverName = node.get("server_name").asText();
+//                    } else {
+//                        throw new IllegalArgumentException("Provided object node has no serverName provided");
+//                    }
+//                }
+//
+//                this.databaseName = (node.has("databaseName")) ? node.get("databaseName").asText() : null;
+//                if (this.databaseName == null) {
+//                    if (node.has("database_name")) {
+//                        this.databaseName = node.get("database_name").asText();
+//                    } else {
+//                        throw new IllegalArgumentException("Provided object node has no databaseName provided");
+//                    }
+//                }
+//
+//                this.user = (node.has("user")) ? node.get("user").asText() : null;
+//                if (this.user == null) {
+//                    if (node.has("user")) {
+//                        this.user = node.get("user").asText();
+//                    } else {
+//                        throw new IllegalArgumentException("Provided object node has no user provided");
+//                    }
+//                }
+//
+//                this.password = (node.has("password")) ? node.get("password").asText() : null;
+//                if (this.password == null) {
+//                    if (node.has("password")) {
+//                        this.password = node.get("password").asText();
+//                    } else {
+//                        throw new IllegalArgumentException("Provided object node has no password provided");
+//                    }
+//                }
+//
+//                this.port = (node.has("port")) ? node.get("port").asInt() : 0;
+//                if (this.port == 0 && node.has("port")) {
+//                    this.port = node.get("port").asInt();
+//                } else {
+//                    this.port = 3306;
+//                }
+//
+//                syncHikariConfig();
+//            }
+
+            private void syncHikariConfig() {
                 if (this.hikariConfig == null) {
                     this.hikariConfig = new HikariConfig();
                 }
